@@ -1,0 +1,1370 @@
+Total pages: 16
+
+===== PAGE 1 =====
+IEEE TRANSACTIONS ON INSTRUMENTATION AND MEASUREMENT, VOL. 75, 2026 5004816
+FAD-Net: Unsupervised Frequency-Aware Diﬀusion
+Network for Optical Coherence Tomography
+Speckle Reduction
+Yi-Peng Liu
+ , Member, IEEE, Lei Wang
+ , Jing Li
+ , Yilong Zhang
+ , Member, IEEE,
+Haixia Wang
+ , Member, IEEE, and Yan Liu
+Abstract—Optical coherence tomography (OCT) is a non-
+invasive imaging technology based on the principle of low-
+coherence light interference. OCT is widely applied in biomedical
+imaging and biometrics. However, in OCT imaging, speckle noise
+arises from the coherent interference of light waves scattered
+by microscopic random structures in biological tissues, thereby
+interfering with the accuracy of biological tissues measurement.
+Existing denoising methods suﬀer from issues such as high
+cost, unsatisfactory performance, or heavy reliance on large
+amounts of paired data. To address these challenges, the cur-
+rent study proposes an unsupervised frequency-aware denoising
+network, FAD-Net, featuring two key innovations. First, the
+network combines the frequency-domain decomposition capa-
+bility of the wavelet transform with the progressive denoising
+mechanism of the diﬀusion model. Noisy OCT images are
+decomposed into low-frequency global components and high-
+frequency detail components via a discrete wavelet transform
+(DWT), and a multiscale convolutional module with hierarchical
+contraction characteristics is used to extract high-frequency
+subband features, dynamically guiding the denoising process of
+the diﬀusion model as conditional signals. Second, a structural
+feature extractor (SFE) based on contrastive predictive coding
+is designed to leverage the self-similarity of OCT images. Cross-
+spatial relationships are established via contrastive learning by
+minimizing the feature distances of related image patches and
+maximizing those of unrelated ones, with optimization achieved
+via triplet contrastive loss based on InfoNCE loss. Tests on public
+fundus datasets (i.e., the DUKE17 and DUKE28 datasets) and
+a self-built OCT ﬁngerprint dataset demonstrate that FAD-Net
+outperforms current unpaired methods both qualitatively and
+quantitatively, thus demonstrating the robustness of the model
+Received 4 November 2025; revised 18 January 2026; accepted 5 February
+2026. Date of publication 23 February 2026; date of current version 5 March
+2026. This work was supported in part by the Natural Science Foundation
+of China under Grant 62376251, Grant 62076220, and Grant 62271481; in
+part by the Zhejiang Provincial Natural Science Foundation of China under
+Grant LD24F020005 and Grant LR24F030003; in part by the Fundamental
+Research Funds for the Central Universities under Grant D5000250364; and
+in part by the Medical Health Science and Technology Project of Zhejiang
+Province under Grant 2024KY881. The Associate Editor coordinating the
+review process was Dr. Jing Lei. (Corresponding author: Jing Li.)
+Yi-Peng Liu is with the School of Cybersecurity, Northwestern Polytech-
+nical University, Xi’an 710072, China (e-mail: liu
+yipeng@126.com).
+Lei Wang, Yilong Zhang, and Haixia Wang are with the College
+of Computer Science and Technology, Zhejiang University of Tech-
+nology, Hangzhou 310023, China (e-mail: 221123120148@zjut.edu.cn;
+zhangyilong@zjut.edu.cn; hxwang@zjut.edu.cn).
+Jing Li is with the Department of Pharmacology, School of Phar-
+macy, Air Force Medical University, Xi’an 710032, China (e-mail:
+lijing.td@aliyun.com).
+Yan Liu is with the College of Computer and Automation Engi-
+neering, Northeast Forestry University, Harbin 150040, China (e-mail:
+yan.liu@nefu.edu.cn).
+Digital Object Identiﬁer 10.1109/TIM.2026.3667230
+across diverse datasets. The source code and pretrained models
+will be publicly available at https://github.com/turturing/FAD-Net
+Index Terms—Diﬀusion model, optical coherence tomography
+(OCT), speckle reduction.
+I. I NTRODUCTION
+O
+PTICAL coherence tomography (OCT) has emerged as a
+powerful noninvasive, high-resolution imaging
+technique that provides cross-sectional visualization
+of biological tissues with micrometer-scale precision.
+Leveraging low-coherence interferometry, OCT captures
+internal structural information by measuring the backscattered
+light from diﬀerent tissue layers, enabling real-time, in vivo
+imaging without the use of ionizing radiation. This unique
+combination of high spatial resolution, noninvasiveness, and
+depth penetration makes OCT an invaluable tool across
+diverse ﬁelds, particularly in medical diagnostics [1] and
+biometric applications [2], [3].
+In medicine, OCT is extensively used for retinal imaging,
+dermatological assessments, and cardiovascular diagnostics
+supporting early disease detection and treatment monitoring. In
+biometrics, its ability to visualize subsurface tissue structures
+enables advanced identiﬁcation systems with higher security
+and accuracy than does traditional surface-level imaging [4].
+To explore subsurface biometric features, we developed a cus-
+tom OCT instrument for high-resolution imaging of ﬁngertip
+skin tissues [5], as shown in Fig. 1. Our system is optimized
+to extract detailed subsurface characteristics, including latent
+ﬁngerprints [6], [7], sweat glands [8], [9], and sweat pores
+[10], which are crucial for reliable biometric authentication
+and forged sample detection. By capturing the intricate 3-D
+architecture of these internal features, our OCT-based
+approach enables more robust identiﬁcation and veriﬁcation
+processes, thus eﬀectively addressing the limitations of con-
+ventional surface-based biometric techniques [11].
+However, a signiﬁcant challenge in OCT imaging is the
+presence of speckle noise, which is an inherent phenomenon
+arising from the coherent nature of the imaging light source
+[12], [13]. Speckle noise manifests as random intensity ﬂuctu-
+ations in the OCT images, obscuring ﬁne tissue structures and
+degrading the accuracy of quantitative measurements. It can
+also lead to misinterpretation of tissue morphology, resulting
+in false positives or negatives during sample identiﬁcation.
+Moreover, it hinders the precise quantiﬁcation of key structural
+1557-9662 © 2026 IEEE. All rights reserved, including rights for text and data mining, and training of artiﬁcial intelligence and
+similar technologies. Personal use is permitted, but republication/redistribution requires IEEE permission.
+See https://www.ieee.org/publications/rights/index.html for more information.
+Authorized licensed use limited to: China Jiliang University. Downloaded on May 10,2026 at 01:15:48 UTC from IEEE Xplore.  Restrictions apply. 
+
+===== PAGE 2 =====
+5004816 IEEE TRANSACTIONS ON INSTRUMENTATION AND MEASUREMENT, VOL. 75, 2026
+Fig. 1. OCT system designed for 3-D ﬁngerprint scanning.
+parameters, such as the size and distribution of sweat glands,
+which are essential for reliable biometric analysis. Therefore,
+eﬀective suppression of speckle noise is critical for enhancing
+the quality and reliability of OCT images, thus enabling accu-
+rate extraction and analysis of subsurface biometric features.
+Traditional OCT denoising methods can be broadly cate-
+gorized into three types: spatial ﬁltering methods, transform-
+domain methods, and model-based methods [14], [15].
+Compared with deep-learning-based methods, traditional
+methods often use ﬁxed ﬁltering kernels or transformation
+bases, which lack adaptability to the complex and diverse
+characteristics of OCT images. Moreover, they typically make
+assumptions about the statistical properties of noise, and their
+performance degrades signiﬁcantly when these assumptions
+do not hold in real-world scenarios. Deep learning has led
+to breakthroughs in speckle suppression for OCT images
+[16]. The trimmed denoising convolutional neural network
+(DnCNN) [17] and generative adversarial network (GAN) [18]
+are applied to denoise retinal OCT images. However, these
+methods rely heavily on many noisy-clean image pairs, and
+obtaining high-quality clean OCT images is challenging in
+practice.
+Recently, diﬀusion models have injected new vitality into
+image processing by cleverly leveraging the prior information
+of the data distribution without the need for a large amount of
+supervised data [19], [20]. By gradually reversing the diﬀusion
+process, diﬀusion models can eﬀectively remove noise from
+OCT images, thereby oﬀering an alternative for improving the
+quality of OCT images and improving the accuracy of medical
+diagnosis and research. However, these methods overlook the
+characteristics of OCT images in the high-frequency domain
+[21]. From a 1-D frequency perspective, spectral domain OCT
+(SD-OCT) is physically measured in the spectral domain and
+reconstructed in the spatial domain. Ignoring the frequency
+information can lead to the loss of key frequency components
+along the axial direction during reconstruction, causing a
+deviation between the reconstructed image and the actual
+situation, making the accurate restoration of the ﬁne structures
+of tissues impossible [21]. Research has proven that neural
+networks are not adept at ﬁtting high-frequency information
+[22], [23].
+To address the scarcity of clean labels and the neglect of
+high-frequency information, we propose a frequency-aware
+diﬀusion network (FAD-Net) for OCT speckle reduction.
+FAD-Net integrates wavelet-based frequency decomposition
+with an unsupervised diﬀusion framework. Speciﬁcally, the
+discrete wavelet transform (DWT) is used to extract multi-
+scale high-frequency subbands, which are dynamically fused
+into the diﬀusion process via a time-aware weight generator
+(TAWG). This mechanism enables the model to emphasize
+high-frequency detail preservation in early diﬀusion steps and
+enhance structural continuity in later stages. The proposed
+method is validated on two public OCT datasets and a
+self-built OCT ﬁngerprint dataset, demonstrating its strong
+generalization and noise suppression ability.
+The main contributions of our study are summarized as
+follows.
+1) We propose FAD-Net, an unsupervised diﬀusion-based
+framework designed for OCT speckle reduction without
+the need for paired training data.
+2) We introduce a frequency-domain decomposition strat-
+egy that decouples low- and high-frequency information,
+guided by a TAWG to improve high-frequency feature
+learning.
+3) We incorporate a contrastive predictive coding-based
+structural feature extractor (SFE) to leverage spatial self-
+similarity and improve global feature consistency.
+4) Without the constraint of paired data, we synchronously
+verify the eﬀectiveness on the OCT fundus and ﬁnger-
+print data. Through the dual veriﬁcation of quantitative
+indicators and visual ﬁdelity, the generalize ability of
+the method for heterogeneous OCT imaging devices is
+established.
+The remainder of this article is organized as follows.
+Sections II and III introduce related works and our proposed
+method, respectively. The experimental results are discussed
+in Section IV. Section V presents the conclusion.
+II. R ELATED WORKS
+A. Unsupervised OCT Image Speckle Reduction
+Compared with traditional speckle reduction methods, deep
+learning-based OCT speckle reduction methods have achieved
+good results in preserving structures and edge details. How-
+ever, most methods often require many noise-free clean OCT
+images as labels. The method of obtaining many ground-
+truth images via multiframe averaging is usually complex
+and time consuming, which is not conducive to the pop-
+ularization of speckle reduction methods. Therefore, some
+researchers have proposed OCT speckle reduction methods
+Authorized licensed use limited to: China Jiliang University. Downloaded on May 10,2026 at 01:15:48 UTC from IEEE Xplore.  Restrictions apply. 
+
+===== PAGE 3 =====
+LIU et al.: FAD-Net: UNSUPERVISED FAD-Net FOR OCT SPECKLE REDUCTION 5004816
+that do not require clean-noise image pairs. By using a 1:3
+ratio of paired-unpaired data, Su et al. [24] designed an
+asymmetric encoder–decoder and reduced the dependence on
+paired data, achieving performance close to that of fully
+supervised learning. Noise2Noise (N2N) [25] proves from a
+statistical perspective that when no clean data are needed, only
+paired noisy images can be used to train denoising models.
+Huang et al. utilized an improved SRResNet and combined it
+with the N2N strategy to achieve real-time speckle reduction in
+OCT images of diﬀerent samples [26]. Bai et al. [27] proposed
+a dual-sampling N2N framework, which combines symmet-
+ric sampling and bicubic sampling to generate noisy image
+pairs, avoiding reliance on noise distribution models. Yang
+and Yang [28] utilized multiresolution analysis and wavelet
+transform to generate self-supervised training pairs, thus elimi-
+nating the need for high-signal-to-noise-ratio reference images.
+Quan et al. [29] proposed the Self2Self strategy, which focuses
+on single-image self-supervised speckle reduction. The core
+goal of this strategy is to use the dropout technique to
+learn speckle reduction from a single image. Ge et al. [30]
+improved the Self2Self strategy by updating convolutional
+layers to gated convolutional layers. Compared with the orig-
+inal Self2Self network, this improvement can better extract
+image features. Geng et al. [31] proposed a new triplet cross-
+fusion learning (TCFL) strategy for unpaired OCT image
+speckle reduction. This approach forms unpaired triplets with
+clean and noisy images to help the network extract noise
+information, greatly reducing the need for clean labels. Our
+method does not require clean image labels as a training
+benchmark. Instead, it leverages the characteristics of diﬀusion
+models to learn solely from the feature distribution of noisy
+images themselves.
+B. Diﬀusion Model
+Diﬀusion models have emerged as a powerful paradigm
+for generative modeling, leveraging a forward process that
+gradually corrupts data with noise and a reverse process that
+iteratively denoises it [32], [33], [34]. Unlike GANs, diﬀusion
+models excel in capturing complex data distributions while
+avoiding mode collapse, making them particularly suitable
+for image restoration tasks. Ho et al. proposed a simple yet
+eﬀective diﬀusion probabilistic model for image generation,
+which is a milestone in the ﬁeld of modern diﬀusion models
+[35]. Recently, diﬀusion-based models have shown consid-
+erable potential in various computer vision tasks [36], such
+as conditional image generation [37] and image superreso-
+lution [38]. Diﬀusion models also play a signiﬁcant role in
+the medical ﬁeld. Their main application directions cover
+multiple aspects, including medical image segmentation [39],
+anomaly detection, and medical image denoising [19]. These
+approaches align with our goal of unsupervised, frequency-
+guided denoising for OCT data. Daras et al. proved that
+when a diﬀusion model is trained solely on noisy data, the
+marginal distribution of the reverse process progressively peels
+oﬀ the stochastic component of the noise distribution and
+converges to the clean data distribution [40]. Our FAD-Net
+innovatively integrates the frequency-domain decomposition
+capability of the wavelet transform into the diﬀusion model,
+enabling denoising without the need for labels by leveraging
+the characteristics of the frequency domain. This network
+enhances ability of the model to handle high-frequency details.
+C. Wavelet Transform-Based Methods
+The wavelet transform can divide an image into the high-
+frequency and low-frequency domains, which helps people
+process the image in the frequency domain. In recent years,
+the combination of wavelet transform and deep learning has
+been widely explored in computer vision tasks. The wavelet
+transform has made achievements in the areas of image
+compression, image denoising, and image texture feature
+extraction. Liu et al. [41] proposed a multilevel wavelet-CNN
+to expand the receptive ﬁeld and achieved a better tradeoﬀ
+between eﬃciency and recovery performance. Studies have
+also used the wavelet transform to transform an image from
+low resolution to high resolution. Xin et al. [42] decomposed a
+low-resolution image into a series of wavelet coeﬃcients, used
+a CNN to predict the corresponding series of high-resolution
+coeﬃcients, and then used them to reconstruct the high-
+resolution image. Li et al. [43] combined the transformer with
+the wavelet transform and implemented an eﬀective multilevel
+feature aggregation module. We utilize the high-frequency
+subbands decomposed by the wavelet transform to extract
+high-frequency features as prior information, which guides the
+diﬀusion model for denoising. This approach optimizes detail
+retention and structural reconstruction in stages under diﬀerent
+noise levels.
+III. M ETHOD
+A. Baseline Architecture
+The diﬀusion model is an image denoising method based
+on a probabilistic model. It simulates the diﬀusion of noise by
+progressively corrupting an input image with Gaussian noise
+until it becomes pure noise, and then reconstructs the original
+image by iteratively predicting and removing noise through a
+noise-prediction network in the reverse process. Recent theo-
+retical analyses [40] have demonstrated that diﬀusion models
+trained on noisy observations can approximate the clean data
+manifold, provided that the noise distribution is stationary and
+Gaussian. This motivates our unsupervised formulation. On the
+basis of these characteristics, we perform hierarchical feature
+extraction on the high-frequency subbands via a bottom-up
+multiscale convolutional layer architecture. This multiscale
+convolutional layer architecture reduces the number of layers
+as the network deepens, thus enabling the network to learn
+the local detail information of the image in the shallow layers
+and focus on the global representation of the high-frequency
+detail features in the deep layers. This framework consists of
+three parts: 1) contrastive learning pretrained structural fea-
+ture encoder; 2) frequency-aware decomposition and dynamic
+temporal fusion; and 3) unsupervised training based on noise
+prediction. The framework of the FAD-Net is shown in Fig. 2.
+B. Contrastive Learning Pretrained SFE
+To learn semantically invariant features from unlabeled
+OCT images, we design a SFE based on contrastive
+predictive coding. Its core objective is to force the model
+Authorized licensed use limited to: China Jiliang University. Downloaded on May 10,2026 at 01:15:48 UTC from IEEE Xplore.  Restrictions apply. 
+
+===== PAGE 4 =====
+5004816 IEEE TRANSACTIONS ON INSTRUMENTATION AND MEASUREMENT, VOL. 75, 2026
+Fig. 2. FAD-Net architecture. FAD-Net distinguishes random noise from clean structures during backpropagation via the MHFB and the SFE, ultimately
+achieving speckle suppression while preserving structures.
+Fig. 3. Model architecture of the pretrained SFE. The yellow box represents the target patch xt, the blue box denotes the context patch xc, and the green
+box indicates the structurally similar patch xs. Context patches and similar patches are treated as relevant positions to the target patch. By reducing feature
+distances at relevant locations and increasing them at irrelevant locations, we induce structural features to encode the underlying contextual structure.
+to learn features of image patches and establish cross-spatial
+connections via contrastive learning. OCT images are self-
+similar, and contextual information is closely related to image
+structure. By reducing the feature distance of related positions
+and increasing the feature distance of unrelated positions,
+we induce structural features to encode potential contextual
+structures, as shown in Fig. 3.
+1) Input Patch Deﬁnition: For an input OCT image, the
+SFE ﬁrst deﬁnes and samples three types of patches, with the
+following key settings.
+1) Target Patch x t: Randomly crop a P× P as the target
+patch.
+2) Context Patch xc: Sampled from the spatial adjacent area
+of xt (oﬀset≤ P/2)
+3) Structurally Similar Patch x s: Generated through long-
+range semantic matching, ensure that it is spatially
+distant from xt but texture-similar.
+2) Generation of Structurally Similar Patch x s: Randomly
+sample K long-range candidate patches in the image (the
+Euclidean distance from the target patch is ≥ 2P)
+C ={P| dist (P, Pt)≥ r· s} (1)
+Authorized licensed use limited to: China Jiliang University. Downloaded on May 10,2026 at 01:15:48 UTC from IEEE Xplore.  Restrictions apply. 
+
+===== PAGE 5 =====
+LIU et al.: FAD-Net: UNSUPERVISED FAD-Net FOR OCT SPECKLE REDUCTION 5004816
+where dist(·) is the Manhattan distance, r is the distance
+multiple, and s is the block size. This constraint ensures
+that the candidate blocks and the target block are spatially
+separated enough to avoid sampling local similar regions.
+The patch with the most similar texture to xt, as measured
+by the pixel-level cross correlation coeﬃcient Sim( Xt, X), is
+selected as the positive sample xs
+Sim (Xt, X) = Cov (Xt, X)
+σXtσX
+= E
+ 
+Xt−µXt
+
+(X−µX)
+
+σXtσX
+(2)
+where µ and σ represent the mean and standard deviation,
+respectively.
+The structurally similar patch Xs is selected from the
+candidate setC by maximizing the pixel-level similarity
+Xs = argmax
+X∈C
+Sim (xt, X) (3)
+whereC is the candidate set deﬁned in (1) and Sim(·) is given
+in (2). Here, ∗argmax returns the argument that maximizes
+the similarity.
+3) Contrastive Loss for SFE Optimization: To optimize the
+SFE, we design a triplet contrastive loss based on InfoNCE
+loss [44] to optimize the SFE. The structural feature at position
+Xi is deﬁned as zxi. The loss function is deﬁned as follows:
+Lcon
+= 1
+3N
+NX
+i=1
+
+LInfoNCE
+ 
+zti,
+˚
+zci, zsi
+	
++ LInfoNCE
+ 
+zci,
+˚
+zti, zsi
+	
++ + LInfoNCE
+ 
+zsi,
+˚
+zti, zci
+	
+(4)
+where the InfoNCE loss function is
+InfoNCE
+ 
+hi, h j
+
+=− log exp
+ 
+sim
+ 
+hi, h j
+
+/τ
+
+PN
+k=1 exp (sim (hi, hk)/τ)
+(5)
+where N is the batch size; and τ is the temperature parameter.
+The structural features extracted by this module are mapped
+and fed into the subsequent dynamic temporal fusion module
+(see Section III-C), they provide structural-consistency guid-
+ance for each noise-prediction step of the diﬀusion model.
+C. Frequency-Aware Decomposition and Dynamic Temporal
+Fusion
+In this study, the DWT is employed to conduct frequency
+domain decomposition of OCT images, and the multiscale
+frequency domain features of the images are decoupled via
+the Haar wavelet basis function. A TAWG dynamically fuses
+these frequency priors with encoder features across diﬀusion
+steps.
+1) Wavelet Transform: Given a noisy OCT image I ∈
+RH×W×C, where H×W is the spatial size and C is the number
+of channels. It is decomposed into four subbands through a
+2-D DWT, as shown in the following equation:
+ILL, ILH, IHL, IHH = DWT (I). (6)
+The 2-D Haar wavelet transform of the input image can be
+decomposed into a low-frequency approximation component
+(ILL) and three groups of high-frequency detail subbands ( ILH,
+IHL, IHH ). Among them, ILL represents the approximation coef-
+ﬁcients, ILH represents the horizontal details, IHL represents
+the vertical details, and IHH represents the diagonal details.
+The high-frequency subbands characterize the edge, texture,
+and noise components of the image.
+2) Multiscale High-Frequency Feature Extraction Block:
+To improve the representational eﬀectiveness of high-
+frequency features, the decomposed subbands are hierarchi-
+cally processed through a multiscale convolutional structure.
+As illustrated in Fig. 2, the Multiscale High-Frequency Feature
+Extraction Block (MHFB) builds a four-level feature pyramid
+within the backbone network, generating feature maps with
+resolutions ranging from 16 × 16 to 128 × 128. This design
+allows the network to progressively capture high-frequency
+information from local details to the global context. For each
+high frequency subband S ∈{ ILH, IHL, IHH}, MHFB employs
+three cascaded convolutional blocks with channel shrinkage.
+Each block combines a 3× 3 convolution, batch normalization,
+and ReLU function activation. Through these convolutional
+layers, we can obtain the high-frequency features Hi
+j for i
+ranging from 1 to 4. i and j index the layer depth and scale
+level, respectively. Therefore, the expression for feature H at
+the ith row and jth column is
+Hi
+j
+=
+8
+ˆˆ
+ˆ
+ˆ
+<
+ˆˆ
+ˆ
+ˆ
+:
+BConv
+
+Concat
+
+Hi
+j−1, U p
+
+Hi+1
+j
+
+, if i + j≤ 4
+BConv
+ 
+Concat
+ 
+Hi
+j−1, Z
+
+, if i = 4 & j = 1
+BConv
+
+Concat
+
+Hi
+j−1, U p
+
+Hi+1
+j−1
+
+, if i + j = 5 &
+i , 4
+(7)
+where BConv represents the 3 × 3 Conv-Bn-Relu operation.
+Concat(·) indicates the concatenation operation, and U p(·) is
+an upsampling operation with a rate of 2. Z represents the zero
+matrix.
+Speciﬁcally, the feature pyramid is constructed using a
+combination of bottom-up hierarchical construction and lateral
+fusion strategies. As shown in (7), along the horizontal direc-
+tion, the network progressively propagates features from the
+previous scale Hi
+j−1 within the same layer to enable scale-wise
+information ﬂow. Along the vertical direction, features from
+a deeper layer Hi+1
+j are ﬁrst upsampled to match the current
+spatial resolution and then concatenated with the horizontally
+propagated features.
+The ﬁnal multiscale features Fh = {Hi
+j | i + j = 5} are
+injected into the diﬀusion denoising network via a dynamic
+weighting mechanism.
+3) Time-Aware Weight Generator: To dynamically integrate
+high-frequency priors into the denoising process,the TAWG is
+embedded within the encoder–decoder architecture. At each
+diﬀusion step t, the TAWG produces a spatially adaptive
+weight matrix through a multilayer perceptron
+Wt =σ(W2· GELU (W1· t + b1) + b2) (8)
+where σ(·) denotes the sigmoid function that constrains Wt∈
+(0, 1), and W1, W2, b1, and b2 are learnable parameters. This
+design enables the network to generate time-dependent fusion
+Authorized licensed use limited to: China Jiliang University. Downloaded on May 10,2026 at 01:15:48 UTC from IEEE Xplore.  Restrictions apply. 
+
+===== PAGE 6 =====
+5004816 IEEE TRANSACTIONS ON INSTRUMENTATION AND MEASUREMENT, VOL. 75, 2026
+Fig. 4. Diﬀusion model process.
+weights that adaptively control the contributions of diﬀerent
+feature sources during the denoising process.
+The ﬁnal fused feature is then computed as follows:
+Ffuse = (1− Wt)⊙ Fenc + Wt⊙ Fh (9)
+where Fenc represents the feature obtained by performing
+cross-attention between the encoder feature Funet of U-Net
+and the spatially projected feature from SFE. The element-
+wise multiplication operator ⊙ adaptively blends the encoder
+feature and the high-frequency prior according to Wt.
+The fused feature F f use is constructed in a multiscale
+manner to form a hierarchical set which is tailored to match
+the hierarchical layers of the U-Net decoder. Speciﬁcally,
+as the noise-prediction network progressively upsamples the
+feature maps, the corresponding hierarchical fused feature map
+Fi
+f use is ﬁrst spatially aligned and then dynamically injected
+into the decoding pathway. This layer-wise integration allows
+the network to directly exploit frequency-aware details across
+multiple resolutions, thereby guiding the noise estimation
+process to achieve more robust performance.
+D. Unsupervised Training Based on Noise Prediction
+Unsupervised denoising diﬀusion models are illustrated in
+Fig. 4. In the forward process q, Gaussian noise is progres-
+sively added to the input image x0 over T timesteps, whereas
+in the reverse process pθ, a neural network parameterized by
+θ learns to iteratively denoise the image and reconstruct the
+clean sample.
+The noise injection at each timestep t is
+xt =√
+αtx0 +
+p
+1−αtϵ, ϵ ∼N (0, I) (10)
+where the noise schedule αt controls the magnitude of the
+added noise, and ϵ denotes additive Gaussian noise. The
+reverse diﬀusion process involves recovering the original
+image x0 from the noisy image xt.
+The conditional probability distribution is expressed as
+follows:
+pθ (xt−1| xt, Ffuse) =N
+ 
+xt−1;µθ (xt, t, Ffuse),σ 2
+t I
+
+(11)
+where σt controls the update step size. The conditional mean
+µθ is computed using the noise prediction ϵθ as follows:
+µθ (xt, t, Ffuse) = 1√αt
+
+xt− 1−αt√1− ¯αt
+ϵθ (xt, t, Ffuse)
+
+. (12)
+Algorithm 1 Training Procedures of FAD-Net
+1: repeat
+2: ILL, ILH, IHL, IHH = DWT(I)
+3: Fh = MHFB({ILH, IHL, IHH})
+4: t∼ Uniform({1,..., T});
+5: ϵt∼N (0, I);
+6: xt =√ ¯αt· Inoisy +√1− ¯αt·ϵt
+7: Extract encoder features Fenc from xt using U-Net
+encoder;
+8: Wt = Sigmoid(W2· GELU(W1· t + b1) + b2)
+9: F f use = (1− Wt)⊙ Fenc + Wt⊙ Fh
+10: Take gradient descent step on ∇θ∥ϵθ(xt, t, Ffuse)−ϵt∥2
+11: until converged
+On the basis of the ﬁnally predicted noise ˆ ϵθ, the clean
+image can be reconstructed as follows:
+ˆx0 = 1√ ¯αt
+·
+
+xt−
+p
+1− ¯αt· ˆϵθ
+
+. (13)
+During training, the network parameters are optimized by
+minimizing a suitable loss function
+Lθ = E(x0,ϵt,t)||ϵθ (xt, t, Ffuse)−ϵt||2 (14)
+where ϵt∼N (0, I) is the ground-truth Gaussian noise. Mini-
+mizing this objective guides the network to accurately predict
+the injected noise across various timesteps, thus enabling
+eﬀective unsupervised denoising. The training steps are listed
+in Algorithm 1.
+IV. E XPERIMENTAL RESULTS
+A. Dataset and Implementation Details
+1) Dataset: To better verify the eﬀectiveness of the pro-
+posed method for OCT image denoising, four datasets were
+used in the experiments, including three public datasets and
+one custom dataset. Speciﬁcally, the OCT 2017 dataset pro-
+vided by the University of California, San Diego, agreement
+[45] under the CC BY 4.0 license, was used for training. Public
+datasets that have been widely used in the ﬁeld of retinal OCT
+image denoising (i.e., the DUKE17 [46] and DUKE28 [47]
+datasets) and the custom dataset ZJUT1310 datasets were used
+for testing.
+The OCT2017 dataset provides 84 484 OCT images of
+various retinopathies, such as choroidal neovascularization
+Authorized licensed use limited to: China Jiliang University. Downloaded on May 10,2026 at 01:15:48 UTC from IEEE Xplore.  Restrictions apply. 
+
+===== PAGE 7 =====
+LIU et al.: FAD-Net: UNSUPERVISED FAD-Net FOR OCT SPECKLE REDUCTION 5004816
+TABLE I
+DATASET DIVISION
+(CNV), diabetes macular edema (DME), early AMD and
+normal retina.
+The DUKE17 dataset originates from the multicenter clin-
+ical trial of the A2A SDOCT study, which included 17
+eyes from 17 subjects, including both normal subjects and
+patients with nonneovascular age-related macular degeneration
+(AMD). The data were collected using Bioptigen’s SDOCT
+imaging system and included two types of scans: one is a
+square volume scan of approximately 6.6 × 6.6 mm, contain-
+ing 1000 A-scans and 100 B-scans, covering the fovea; the
+other is a meridional repeat scan targeting the fovea, with
+1000 A-scans and 40 B-scans.
+The DUKE28 dataset was acquired from 28 eyes of 28
+subjects, including both normal and nonneovascular AMD
+patients, via the Bioptigen 840 nm wavelength SDOCT imag-
+ing system.
+The ZJUT1310 dataset was used to prove the generalizabil-
+ity of the proposed method, and we collected 50 pieces of
+ﬁngerprint data on a self-built OCT system [5], as the test set.
+Its optical source is 1310 nm, the coherence length is 13.3 µm,
+the bandwidth is 85.6 nm, the axial resolution is 8.82 µm,
+the lateral resolution is 55.7 µm, the A-line scanning rate is
+60 kHz, the maximum image depth of the ZJUT1310 dataset
+is 4.64 mm, and the scanning range is 18 × 14 mm2.
+The detailed dataset division is shown in Table I. OCT2017
+is a dataset for OCT retinal classiﬁcation that contains noisy
+images without labels. To verify that our method can achieve
+good results on small datasets, we randomly selected 500
+images from the dataset as the training set. The public datasets
+DUKE17 and DUKE28 and the custom dataset ZJUT1310
+were used only as test sets. To further investigate the stability
+of the proposed model with such limited training data, a
+dedicated stability analysis is conducted in Section IV-D.
+2) Implementation Details: The images in both the training
+and testing sets have been resized to 512 × 512. To verify the
+generality and generalization ability of our method on diﬀerent
+datasets, DUKE17 and DUKE28 were used as cross domain
+tests. Examples of images from the three datasets are shown
+in Fig. 5.
+In this study, we implemented the proposed FAD-Net using
+the PyTorch framework. All the experiments were conducted
+on an NVIDIA RTX 4090D GPU with 24 GB of memory.
+For network optimization, we employed the Adam optimizer
+with momentum parameters β1 = 0.5 and β2 = 0.999. During
+training, we selected a batch size of 2 and set the learning rate
+to 0.0001. The maximum number of training iterations was set
+to 100, and the model with the minimum loss value among
+these iterations was saved for further evaluation.
+Fig. 5. Examples from the DUKE17, DUKE28, and OCT2017 datasets. The
+red boxes delineate the texture area, whereas the green boxes delineate the
+relatively uniform background area.
+In this study, to evaluate the practical deployability of our
+model, we measured the training time, inference speed, and
+GPU resource consumption. The total training process for
+100 epochs took 231.38 min on an NVIDIA RTX 4090D
+GPU. During training, the overall GPU memory usage reached
+20.09 GB. For inference, the model achieved an average
+processing time of 215.81 ms per image, with 0.16 GB of
+GPU memory allocated and 1.32 GB reserved. These results
+indicate that, in both research and real-world scenarios, the
+model can complete training and inference within acceptable
+time and resource limits, demonstrating its practical feasibility
+for deployment.
+B. Evaluation Metrics
+Five widely used quantitative metrics were employed to
+comprehensively evaluate the denoising performance from
+multiple dimensions: the peak signal-to-noise ratio (PSNR),
+the structural similarity index (SSIM), the contrast-to-noise
+ratio (CNR), the edge preservation index (EPI), and the
+equivalent number of looks (ENLs). The PSNR evaluates the
+degree of distortion by calculating the pixel diﬀerence between
+the denoised image and the noise-free reference image, and it
+is measured in decibels (dB)
+PSNR = 10· log10
+ I2
+max
+MSE
+
+(15)
+where Imax represents the maximum pixel value of the image
+(e.g, 255 for an 8-bit image), and mse is the mean squared
+error
+mse = 1
+M· N
+MX
+i=1
+NX
+j=1
+
+Igt (i, j)− Iden (i, j)
+2
+(16)
+where Igt is the ground truth image and Iden is the denoised
+image. Higher PSNR values indicate lower image distortion
+and better noise suppression.
+The SSIM evaluates image similarity in three dimensions:
+luminance, contrast, and structure. This index ranges from
+Authorized licensed use limited to: China Jiliang University. Downloaded on May 10,2026 at 01:15:48 UTC from IEEE Xplore.  Restrictions apply. 
+
+===== PAGE 8 =====
+5004816 IEEE TRANSACTIONS ON INSTRUMENTATION AND MEASUREMENT, VOL. 75, 2026
+Fig. 6. Denoising performance comparison of DUKE17. (a) Noisy. (b) Clean. (c) Self2Self. (d) S2SNet. (e) DnCNN. (f) TCFL. (g) DDPM. (h) Our FAD-Net.
+[0, 1], with values closer to 1 indicating better structural
+preservation
+SSIM (x, y) =
+
+l (x, y)
+α
+·
+
+c (x, y)
+β
+·
+
+s (x, y)
+γ
+. (17)
+The CNR characterizes the contrast between the target and
+the background relative to the noise intensity
+CNR = |µA−µB|q
+σ2
+A +σ2
+B
+(18)
+where µAand µB are the means of the target and background
+regions, respectively, and σ2
+Aand σ2
+B are the corresponding
+variances. Higher values indicate better contrast preservation.
+The calculations are based on four regions of interest (ROIs)
+and one background ROI, as shown in Fig. 5.
+The ENLs is used to evaluate the smoothness of homoge-
+neous regions and is calculated as follows:
+ENLi = µ2
+i
+σ2
+i
+(19)
+where µi and σi represent the mean and standard deviation,
+respectively, of the ROIs.
+The EPI reﬂects edge detail preservation capability and is
+calculated as follows:
+EPI =
+P
+W
+P
+H|Id (x + 1, y)− Id (x, y)|P
+W
+P
+H|In (x + 1, y)− In (x, y)| (20)
+where In is the noisy image and Id is the denoised image. To
+avoid interference from gradient changes in uniform regions,
+this experiment performs calculations only within edge region
+ROIs.
+C. Experimental Analysis
+To verify the eﬀectiveness of the proposed FAD-
+Net method, we designed comparative experiments, which
+included two self-supervised methods [29], [30] and three
+unsupervised methods [31], [48], [49].
+1) Visual Eﬀects Analysis: As shown in Fig. 6, we selected
+a representative OCT image from the DUKE17 dataset to
+visualize the denoising performance of all the methods. The
+two ROIs in the image were magniﬁed and marked with red
+and green rectangular frames. The denoising results of the self-
+supervised algorithms are shown in Fig. 6(c) and (d) show,
+respectively. Fig. 6(e) and (f) presents the denoising results of
+the algorithms in the ﬁeld of unsupervised learning. Specif-
+ically, compared with the original image, those of Self2Self
+[29] and S2SNet [30] are limited by their training methods;
+speciﬁcally, these two algorithms fail to eﬀectively remove the
+speckle noise in the original image.
+Although TCFL [31] achieved relatively signiﬁcant denois-
+ing eﬀects, as shown in the ﬁgure, some structural details
+were lost. Although the DnCNN [48] has achieved some noise
+Authorized licensed use limited to: China Jiliang University. Downloaded on May 10,2026 at 01:15:48 UTC from IEEE Xplore.  Restrictions apply. 
+
+===== PAGE 9 =====
+LIU et al.: FAD-Net: UNSUPERVISED FAD-Net FOR OCT SPECKLE REDUCTION 5004816
+Fig. 7. Visual comparison of speckle noise suppression on fundus OCT images. The corresponding residual images are listed in the second row.
+TABLE II
+DENOISING PERFORMANCE ON DUKE17
+reduction eﬀects, closer observation revealed black spot noise
+in the image that is di ﬃcult to remove. The denoising result
+of the DDPM [49] method has a low contrast, and the texture
+details are not well presented. The corresponding residual
+images between the speckle removal results and the ground
+truth are shown in Fig. 7. In contrast, our proposed FAD-Net
+both eﬀectively suppress speckle noise and eﬀectively preserve
+many biological structural details. The visual performance on
+the data from the DUKE28 dataset is shown in Fig. 8.
+2) Quantitative Indicator Analysis: Table II summarizes
+the quantitative results of unsupervised algorithms on the
+DUKE17 dataset. FAD-Net outperforms the other unsuper-
+vised methods in terms of most of the metrics, which is
+consistent with the visual results. Table III presents the quan-
+titative metrics for the DUKE28 dataset. Compared with the
+other methods, our method also achieves excellent results on
+the DUKE28 dataset.
+To further validate the reliability of our proposed method-
+ological improvements—particularly for the ENL metric, a
+metric prone to high variability owing to its inherent sensitivity
+to local signal intensity ﬂuctuations—we performed a stringent
+statistical analysis. As presented in Table IV, we computed the
+95% conﬁdence intervals (CIs) for all comparative methods.
+Notably, FAD-Net achieves consistently higher mean perfor-
+mance values than competing methods across all evaluated
+datasets. For the DUKE28 dataset, the 95% CI of FAD-Net is
+distinctly disjoint from those of most baseline methods. This
+cross-dataset consistency demonstrates that the performance
+gains delivered by FAD-Net are reliable and not attributable
+to the random ﬂuctuations inherent in individual samples, thus
+validating the robustness of our proposed model.
+3) Analysis of Spectral Bias: To evaluate the spectral
+diﬀerences between our method and other deep learning algo-
+rithms, we conducted a frequency analysis. High-frequency
+Authorized licensed use limited to: China Jiliang University. Downloaded on May 10,2026 at 01:15:48 UTC from IEEE Xplore.  Restrictions apply. 
+
+===== PAGE 10 =====
+5004816 IEEE TRANSACTIONS ON INSTRUMENTATION AND MEASUREMENT, VOL. 75, 2026
+Fig. 8. Denoising performance comparison of DUKE28. (a) Noisy. (b) Clean. (c) Self2Self. (d) S2SNet. (e) DnCNN. (f) TCFL. (g) DDPM. (h) Our FAD-Net.
+TABLE III
+DENOISING PERFORMANCE ON DUKE28
+TABLE IV
+95% CI S OF ENL FOR THE DUKE17 AND DUKE28 D ATASETS
+components generally cover detailed information such as
+edges, textures, and ﬁne structures. In the ﬁeld of medical
+imaging ﬁeld, these details play crucial roles in the diagnosis
+and treatment of diseases. Therefore, the OCT speckle reduc-
+tion task is usually expected to remove as much noise as
+possible while retaining these high-frequency details.
+First, we perform a 2-D Fourier transform on the image to
+convert the image from the spatial domain to the frequency
+domain. Afterward, we carry out a spectrum centering oper-
+ation, that is, we move the low-frequency components of the
+spectrum to the center of the spectrum. Afterward, we take the
+logarithmic average of the intensity of each A line and plot
+the intensity values on the pixels for spectral analysis.
+As shown in Fig. 9, the spectrum diagrams of each OCT
+denoising result are generated on the basis of this process.
+The average spectrum of the images generated by our model is
+quite similar to that of the labeled clean images. Moreover, the
+Authorized licensed use limited to: China Jiliang University. Downloaded on May 10,2026 at 01:15:48 UTC from IEEE Xplore.  Restrictions apply. 
+
+===== PAGE 11 =====
+LIU et al.: FAD-Net: UNSUPERVISED FAD-Net FOR OCT SPECKLE REDUCTION 5004816
+Fig. 9. Spectrum diagrams of each OCT denoising result.
+Fig. 10. High-frequency component diﬀerence diagram. Dark colors indicate
+smaller diﬀerences from the clean image.
+diﬀerence map shows the diﬀerences in amplitude between the
+labeled images and the denoised images in the high-frequency
+region. By analyzing this diﬀerence map, the reconstruction
+quality of the denoised images in the high-frequency region
+can be evaluated. The corresponding error map, presented in
+the form of a heatmap, is shown in Fig. 10. Brighter color
+indicates greater errors; darker color indicates smaller errors.
+Our method clearly occupies the largest dark area in the error
+heatmap, which fully indicates that the deviation between our
+method and the labeled clean image is small. It further shows
+that the learned denoising trajectory converges toward the
+clean spectral distribution.
+To further verify the noise reduction eﬀects of the various
+methods in the frequency domain, we analyzed the average
+intensity distributions of the images processed by diﬀerent
+methods in the frequency domain, as shown in Fig. 11. The
+x-axis represents the pixel location, and the y-axis represents
+the average intensity on a logarithmic scale. The central
+peak represents the low-frequency components of the image,
+whereas the sides represent the high-frequency regions. The
+labels LR in the ﬁgure represent noisy images, whereas HR
+represents clean images. The ﬁgure shows that our method has
+certain advantages over the other methods. Our method (rep-
+resented by the red dashed line in the ﬁgure) has an average
+intensity in the high-frequency region (side of the ﬁgure) that
+is closer to the intensity of the HR. Considering the overall
+trend of the curve, the deviation between the curve of our
+methods and the curve of the labeled image is small, indicating
+Fig. 11. Line graph of the average intensity distribution of denoised images
+using diﬀerent methods in the frequency domain.
+that our method can better restore the high-frequency details
+of the image in the reconstruction process and thus generate
+results closer to those of the original high-resolution image.
+In contrast, the OCT denoising results generated by existing
+deep learning methods suﬀer from spectral bias issues.
+D. Stability Analysis Under Limited Training Data
+To evaluate the stability of FAD-Net under limited training
+data scenarios, we conducted complementary experiments on
+the OCT2017 dataset.
+We ﬁrst assessed robustness against variations in data
+sampling by ﬁxing the training set size at 500 images and per-
+forming three independent training runs with distinct randomly
+selected subsets. All experiments were conducted with an
+identical network architecture, training protocol, and hyperpa-
+rameter conﬁguration, and were evaluated on the independent
+Duke17 test set. The quantitative results are summarized in
+Table V, revealing minimal performance variability across
+the three runs and thus demonstrating low sensitivity to the
+selection of the training subset.
+Furthermore, we investigated the impact of training set size
+by constructing training subsets of three diﬀerent scales (100,
+300, and 500 images) randomly sampled from the OCT2017
+dataset. Each conﬁguration was replicated three times with dis-
+tinct random seeds to ensure statistical reliability. As presented
+in Table VI, model performance improves monotonically with
+increasing training set size. Collectively, these ﬁndings verify
+that FAD-Net achieves stable training dynamics and robust
+denoising performance even under small-sample conditions.
+Overall, these results conﬁrm that FAD-Net exhibits stable
+training behavior and reliable denoising performance even
+under small-sample conditions.
+E. Discussion
+1) Comparison and Discussion With Supervision Methods:
+Supervised methods such as the DnCNN, GAN based models,
+and specialized OCT denoising often rely on large-scale paired
+datasets to learn noise maps, and they typically achieve strong
+baseline performance in PSNR and SSIM on standard bench-
+marks such as DUKE17/DUKE28. For example, it has been
+reported that supervised SDSR-OCT [50] achieved a PSNR
+value of 27.826–28.132 dB on DUKE28, which is comparable
+to the PSNR value of FAD-Net.
+Authorized licensed use limited to: China Jiliang University. Downloaded on May 10,2026 at 01:15:48 UTC from IEEE Xplore.  Restrictions apply. 
+
+===== PAGE 12 =====
+5004816 IEEE TRANSACTIONS ON INSTRUMENTATION AND MEASUREMENT, VOL. 75, 2026
+TABLE V
+PERFORMANCE OF FAD-N ET ON DIFFERENT RANDOM SUBSETS CONSISTING OF 500 T RAINING IMAGES
+TABLE VI
+PERFORMANCE OF FAD-N ET UNDER VARYING TRAINING SET SIZES
+Fig.
+12. PSNR values at diﬀerent time steps on DUKE17 and DUKE28.
+Moreover, according to work [51], a supervised U-Net
+achieved a PSNR of 30.845 dB under unseen noise condi-
+tions, further demonstrating the strong baseline of supervised
+training when suﬃcient paired data are available.
+A key advantage of the FAD-Net over supervised alterna-
+tives is its robustness to data scarcity. In addition, supervised
+methods may overﬁt the noise distribution of their training
+pairs, which limits the generalizability of heterogeneous OCT
+devices.
+2) Optimal Sampling Time Analysis: We evaluated the
+denoising results of the FAD-Net by setting diﬀerent time
+steps. As shown in Fig. 12, 10 diﬀerent time steps ranging
+from 10 to 100 were selected. At each time step t, the noisy
+image was forward-propagated through the model to obtain
+the predicted denoised image. Afterward, the PSNR between
+this image and the true clean image was calculated. For the
+DUKE17 and DUKE28 datasets, the average PSNR values at
+each time step were calculated and plotted on a graph. It can
+be clearly observed from the graph that on DUKE17, when
+the sampling time reaches approximately t = 50, the PSNR
+value between the denoised images predicted by the model
+and the reference images reaches a signiﬁcant level. After this
+point, the PSNR decreases slightly but then stabilizes. With
+respective to DUKE28, a signiﬁcant diﬀerence is achieved
+when the sampling time reaches t = 30. At this time, the
+model is already capable of restoring images of relatively high
+quality, and the subsequent relative stability in the PSNR value
+implies that the model has been able to produce of high-quality
+images.
+3) Noise Robustness Analysis: In conducting robustness
+analysis, we chose to introduce Gaussian noise, following the
+approach outlined in the referenced literature [31]. During
+the experiments, Gaussian noise with noise levels σ2 of
+0.01, 0.05, 0.1 and 0.2 was selected to simulate the noise
+conditions that may be encountered in the actual imaging
+process. We applied FAD-Net trained on the OCT2017 dataset
+to a set of DUKE17 datasets with diﬀerent noise levels for
+testing, to evaluate the generalization ability of the model.
+In the experimental setup, we ﬁrst added diﬀerent levels
+of Gaussian noise to the original images, and then used our
+FAD-Net to process the noisy images. The performance of the
+model was evaluated by PSNR and SSIM. The simulated noisy
+OCT images and the corresponding denoising results of the
+FAD-Net are shown in Fig. 13. The experimental results show
+that this algorithm can e ﬀectively handle diﬀerent noise levels
+and can eﬀectively restore noisy images, demonstrating its
+robustness and eﬀectiveness under diﬀerent noise conditions.
+Speciﬁcally when the noise level σ2 = 0.2, although the
+quality of the simulated noisy images deteriorates, the model
+can still eﬀectively remove the noise. The relevant quantitative
+results are listed in Table VII. These results demonstrate the
+potential of our OCT denoising model in practical applications,
+especially under imaging conditions with high noise levels.
+4) Application of Denoising Model on Fingerprint Dataset:
+The ﬁngerprint dataset is a collection of images with unique
+texture features and noise patterns. In this study, we used a
+custom OCT system to acquire 50 OCT images of ﬁngerprints.
+We compared the proposed model with classic denoising
+methods such as S2SNet [30], Self2Self [29], DnCNN [48],
+and OCT DDPM [49]. The visual results in Fig. 14 intu-
+itively show that when processing the ﬁngerprint OCT images,
+our FAD-Net exhibits excellent noise ﬁltering capabilities.
+The red-framed areas particularly highlight the advantage of
+the model in preserving the detailed texture of ﬁngerprints. The
+quantitative indicators are shown in TableVIII. Compared with
+the other methods, it can eﬀectively ﬁlter out noise while better
+maintaining the integrity of the key features of ﬁngerprints.
+These results fully indicate that the proposed model has
+Authorized licensed use limited to: China Jiliang University. Downloaded on May 10,2026 at 01:15:48 UTC from IEEE Xplore.  Restrictions apply. 
+
+===== PAGE 13 =====
+LIU et al.: FAD-Net: UNSUPERVISED FAD-Net FOR OCT SPECKLE REDUCTION 5004816
+TABLE VII
+QUANTITATIVE RESULTS OF FAD-N ET UNDER DIFFERENT SPECKLE NOISE LEVELS ON DUKE17
+Fig.
+13. Denoising performance of FAD-Net under diﬀerent Gaussian noise
+levels on DUKE17.
+TABLE VIII
+QUANTITATIVE RESULTS OF DENOISING THE FINGERPRINT DATASETS
+USING DIFFERENT METHODS
+superior
+generalization performance and can achieve eﬃcient
+denoising on heterogeneous data. This characteristic not only
+expands the application scope of the model but also conﬁrms
+that its denoising mechanism does not rely on the inherent
+characteristics of speciﬁc data. Instead, it captures a more
+general image denoising pattern, thus enabling it to perform
+stably in complex and real-world scenarios.
+F . Ablation Study
+In this section, we describe the impact of various com-
+ponents of the ability of the FAD-Net module to denoise
+OCT images. To delve into the speciﬁc contributions of each
+component of the FAD-Net module to denoise OCT images,
+this study employs a progressive ablation strategy for the
+experiments conducted in this section. The baseline model
+is DDPM, which, as a classic denoising diﬀusion model,
+possesses a certain level of fundamental performance in the
+ﬁeld of image denoising.
+To validate the eﬀectiveness of the core modules in the
+FAD-Net, two sets of ablation experiments were designed
+by removing the structural prior module and the frequency
+dependent decomposition module to compare the performance
+diﬀerences between the complete model and the ablated
+models on the DUKE17 public fundus dataset. Removing
+the frequency domain decomposition module is called FAD1,
+removing the structural prior module is called FAD2, and
+retaining two modules is called FAD3. The quantitative data
+in Table IX present the eﬀectiveness of these two modules.
+To further investigate the impact of individual compo-
+nents within the frequency-domain decomposition module on
+denoising performance, additional ablation experiments were
+conducted to analyze the eﬀects of each element in this
+module. Building on this foundation, the MHFB is embedded
+into the DDPM to form Model 1. MHFB has a deep nested
+convolutional structure and aims to enhance the extraction
+and processing capabilities of edge regions. The TAWG is
+integrated into Model 1, achieving collaborative optimization
+of high-frequency detail enhancement and noise distribu-
+tion decoupling through a dynamic temporal fusion strategy,
+resulting in Model 2. The frequency-aware mechanism lever-
+ages the DWT to perform frequency domain decomposition
+on OCT images, acquire low-frequency global components
+and high-frequency detail components, and inject multiscale
+high-frequency features as prior information into the noise
+prediction process of the diﬀusion model. To investigate
+whether the addition of the wavelet transform can eﬀectively
+assist the model in learning high-frequency edge information,
+we incorporated the wavelet transform into Model 1 to form
+Model 3, and into Model 2 to form Model 4.
+The quantitative results in Table X indicate that the baseline
+model has a certain basic performance in terms of various
+indicators. Compared with the baseline model, Model 1 shows
+an improvement in indicators such as the PSNR and SSIM
+after its high-frequency feature extraction ability is enhanced,
+indicating that the multilevel convolutional module contributes
+Authorized licensed use limited to: China Jiliang University. Downloaded on May 10,2026 at 01:15:48 UTC from IEEE Xplore.  Restrictions apply. 
+
+===== PAGE 14 =====
+5004816 IEEE TRANSACTIONS ON INSTRUMENTATION AND MEASUREMENT, VOL. 75, 2026
+Fig. 14. Visual results of denoising the ﬁngerprint datasets using diﬀerent methods.
+TABLE IX
+AVERAGE PSNR ( DB) AND SSIM OF THE FAD-N ET ABLATION EXPERIMENT ON DUKE17
+TABLE X
+AVERAGE PSNR ( DB) AND SSIM FOR THE ABLATION EXPERIMENTS OF THE FREQUENCY -D OMAIN DECOMPOSITION MODULE ON DUKE17
+positively to the denoising performance. It can improve the
+image quality to a certain extent and better preserve the
+image details and structure. In the comparative experiments
+between Model 3 and Model 4, the experimental groups
+with the TAWG added have signiﬁcantly higher values of
+the two key indicators of PSNR and SSIM than do the
+control groups without this mechanism. Moreover, the PSNR
+of Model 4 is signiﬁcantly greater than that of the other control
+models, indicating that the combinations of the dynamic
+weight and the frequency perception module complement
+each other and are more conducive to improving images
+quality.
+G. Analysis of Periodic Artifacts
+Notably, faint periodic artifacts can be observed in some
+residual maps (e.g., Fig. 7). Our analysis indicates that
+these artifacts mainly stem from the energy distribution
+characteristics of the high-frequency subbands during wavelet
+decomposition. Because the DWT employs ﬁnitely sup-
+ported basis functions in multiscale decomposition, the
+high-frequency responses may introduce weak periodic tex-
+tures upon reconstruction [52].
+From Fig. 15, it can also be observed that FAD2 and
+FAD3 exhibit slight oscillatory artifacts around homogeneous
+background regions, which are consistent with the wavelet-
+induced periodic textures. These artifacts primarily aﬀect ﬂat
+or low-variance areas but have a negligible inﬂuence on
+structural regions.
+It should be emphasized that the amplitude of these periodic
+artifacts is low relative to the dominant structural signal, so
+their impact on overall structural ﬁdelity is limited. Consistent
+with the frequency-domain analyses presented in Figs. 9–11,
+FAD-Net’s high-frequency energy distribution closely matches
+that of clean images, showing that the artifacts do not cause
+Authorized licensed use limited to: China Jiliang University. Downloaded on May 10,2026 at 01:15:48 UTC from IEEE Xplore.  Restrictions apply. 
+
+===== PAGE 15 =====
+LIU et al.: FAD-Net: UNSUPERVISED FAD-Net FOR OCT SPECKLE REDUCTION 5004816
+Fig. 15. Visual comparison of ablation studies on DUKE17.
+noticeable high-frequency distortions or degrade the perceptual
+quality of reconstructed structures.
+In future work, we plan to explore adaptive frequency-
+domain regularization and improve wavelet based designs
+to further reduce such artifacts and to enhance the balance
+between detail recovery and structural consistency.
+V. C ONCLUSION
+In this work, we propose an unsupervised frequency-aware
+denoising network, namely, FAD-Net. It is based on the
+wavelet transform and addresses issues in OCT technology,
+where imaging is susceptible to noise interference because
+of low sampling rates, and existing denoising methods suﬀer
+from either poor denoising eﬀects or a dependency on large
+amounts of paired data. The experimental results were based
+on data from the public OCT fundus DUKE17 and DUKE28
+datasets and revealed that FAD-Net achieves PSNR and SSIM
+values of 27.756/0.713 and 28.132/0.732, respectively. Addi-
+tionally, we veriﬁed the generalizability of FAD-Net on the
+OCT ﬁngerprint dataset. Moreover, we validated the eﬀec-
+tiveness of the frequency-domain guidance in the diﬀusion
+model. This advances clearer visualization of microstructural
+pathological changes to support more accurate clinical diag-
+noses and improves biometrics by delivering more stable,
+high-ﬁdelity OCT ﬁngerprint data, thereby strengthening the
+security and reliability of identity authentication systems.
+Moreover, it is well-suited for data-scarce clinical or indus-
+trial scenarios, and its frequency-aware denoising framework
+provides a practical foundation for potential integration with
+OCT hardware systems, which could further optimize real-
+time imaging performance in onsite biometric detection.
+REFERENCES
+[1] A. M. Zysk, F. T. Nguyen, A. L. Oldenburg, D. L. Marks, and
+S. A. Boppart, “Optical coherence tomography: A review of clinical
+development from bench to bedside,” J. Biomed. Opt., vol. 12, no. 5,
+2007, Art. no. 051403.
+[2] Y .-P. Liu, Q. Zhong, R. Liang, Z. Li, H. Wang, and P. Chen, “Layer
+segmentation of OCT ﬁngerprints with an adaptive Gaussian prior
+guided transformer,” IEEE Trans. Instrum. Meas., vol. 71, 2022, Art.
+no. 5023515.
+[3] H. Sun, Y . Zhang, P. Chen, H. Wang, Y .-P. Liu, and R. Liang, “A new
+approach in automated ﬁngerprint presentation attack detection using
+optical coherence tomography,” IEEE Trans. Inf. Forensics Security,
+vol. 18, pp. 4243–4257, 2023.
+[4] Y .-P. Liu, W. Zuo, R. Liang, H. Sun, and Z. Li, “Prototype-
+guided autoencoder for OCT-based ﬁngerprint presentation attack
+detection,” IEEE Trans. Inf. Forensics Security, vol. 18, pp. 3461–3475,
+2023.
+[5] H. Sun et al., “Synchronous ﬁngerprint acquisition system based on
+total internal reﬂection and optical coherence tomography,” IEEE Trans.
+Instrum. Meas., vol. 69, no. 10, pp. 8452–8465, Oct. 2020.
+[6] Y .-P. Liu et al., “Orthogonal view-based attention network for layer
+segmentation of 3D OCT ﬁngerprints,” IEEE Trans. Inf. Forensics
+Security, vol. 20, pp. 5705–5717, 2025.
+[7] Y .-P. Liu et al., “Test-time image reconstruction for cross-device OCT
+ﬁngerprint extraction,” IEEE Trans. Inf. Forensics Security, vol. 20,
+pp. 1049–1064, 2025.
+[8] Q. Miao, H. Wang, Y . Zhang, R. Yan, and Y . Liu, “Sweat gland
+enhancement method for ﬁngertip OCT images based on generative
+adversarial network,” IEEE Trans. Biometrics, Behav., Identity Sci. ,
+vol. 6, no. 4, pp. 550–560, Oct. 2024.
+[9] Y . Zhang, X. Li, H. Wang, R. Wang, P. Chen, and R. Liang, “Sweat
+gland extraction from optical coherence tomography using convolutional
+neural network,” IEEE Trans. Instrum. Meas., vol. 72, 2023, Art. no.
+5003816.
+[10] B. Ding, H. Wang, P. Chen, Y . Zhang, R. Liang, and Y . Liu,
+“Subcutaneous sweat pore estimation from optical coherence
+tomography,” IET Image Process., vol. 15, no. 13, pp. 3267–3280,
+Nov. 2021.
+[11] H. Wang et al., “OCT ﬁngerprint presentation attack detection based on
+dual-branch reconstruction diﬀerences,” IEEE Trans. Instrum. Meas.,
+vol. 74, 2025, Art. no. 5030514.
+[12] Y . Guo et al., “Structure-aware noise reduction generative adversarial
+network for optical coherence tomography image,” in Proc. Int. Work-
+shop Ophthalmic Med. Image Anal. Cham, Switzerland: Springer, 2019,
+pp. 9–17.
+[13] Y . Huang et al., “Noise-powered disentangled representation for
+unsupervised speckle reduction of optical coherence tomography
+images,” IEEE Trans. Med. Imag., vol. 40, no. 10, pp. 2600–2614,
+Oct. 2021.
+[14] B. Chong and Y .-K. Zhu, “Speckle reduction in optical coherence
+tomography images of human ﬁnger skin by wavelet modiﬁed BM3D
+ﬁlter,”Opt. Commun., vol. 291, pp. 461–469, Mar. 2013.
+Authorized licensed use limited to: China Jiliang University. Downloaded on May 10,2026 at 01:15:48 UTC from IEEE Xplore.  Restrictions apply. 
+
+===== PAGE 16 =====
+5004816 IEEE TRANSACTIONS ON INSTRUMENTATION AND MEASUREMENT, VOL. 75, 2026
+[15] X. Zhang, L. Li, F. Zhu, W. Hou, and X. Chen, “Spiking cortical
+model–based nonlocal means method for speckle reduction in optical
+coherence tomography images,” J. Biomed. Opt. , vol. 19, no. 6, Jun.
+2014, Art. no. 066005.
+[16] X. Wei, X. Liu, A. Yu, T. Fu, and D. Liu, “Clustering-oriented multiple
+convolutional neural networks for optical coherence tomography image
+denoising,” in Proc. 11th Int. Congr. Image Signal Process., Biomed.
+Eng. Informat. (CISP-BMEI), Oct. 2018, pp. 1–5.
+[17] B. Qiu et al., “Noise reduction in optical coherence tomogra-
+phy images using a deep neural network with perceptually-sensitive
+loss function,” Biomed. Opt. Exp., vol. 11, no. 2, pp. 817–830,
+2020.
+[18] N. A. Kande, R. Dakhane, A. Dukkipati, and P. K. Yalavarthy,
+“SiameseGAN: A generative model for denoising of spectral domain
+optical coherence tomography images,” IEEE Trans. Med. Imag.,
+vol. 40, no. 1, pp. 180–192, Jan. 2021.
+[19] Y . Zhang, C. Huneau, J. Idier, and D. Mateus, “Ultrasound imag-
+ing based on the variance of a diﬀusion restoration model,” in
+Proc. 32nd Eur. Signal Process. Conf. (EUSIPCO), Aug. 2024,
+pp. 760–764.
+[20] Y . Wang, “Implicit image-to-image Schrodinger bridge for CT super-
+resolution and denoising,” 2025, arXiv:2403.06069.
+[21] X. Li, Z. Dong, H. Liu, J. J. Kang-Mieler, Y . Ling, and Y . Gan,
+“Frequency-aware optical coherence tomography image super-resolution
+via conditional generative adversarial neural network,” Biomed. Opt.
+Exp., vol. 14, no. 10, pp. 5148–5161, 2023.
+[22] N. Rahaman et al., “On the spectral bias of neural networks,” in Proc.
+Int. Conf. Mach. Learn., 2019, pp. 5301–5310.
+[23] M. Tancik et al., “Fourier features let networks learn high frequency
+functions in low dimensional domains,” in Proc. Int. Conf. Neural Inf.
+Process. Syst., 2020, pp. 7537–7547.
+[24] B. Su, X. Hu, J. Xu, K. Deng, Y . Zha, and J. Wan, “Semi-supervised
+CT denoising via text-guided mamba diﬀusion models,” IEEE Trans.
+Instrum. Meas., vol. 74, 2025, Art. no. 4506313.
+[25] J. Lehtinen et al., “Noise2Noise: Learning image restoration without
+clean data,” in Proc. Int. Conf. Mach. Learn., 2018, pp. 2965–2974.
+[26] Y . Huang, N. Zhang, and Q. Hao, “Real-time noise reduction based
+on ground truth free deep learning for optical coherence tomography,”
+Biomed. Opt. Exp., vol. 12, no. 4, pp. 2027–2040, 2021.
+[27] J. Bai, D. Zhu, and M. Chen, “Dual-sampling Noise2Noise: Eﬃcient
+single-image denoising,” IEEE Trans. Instrum. Meas., vol. 74, 2025,
+Art. no. 5021312, doi: 10.1109/TIM.2025.3551427.
+[28] H. Yang and X. Yang, “Self-supervised structured illumination
+microscopy image denoising based on multiresolution analysis
+resampling,” IEEE Trans. Instrum. Meas., vol. 74, 2025, Art. no.
+5035711.
+[29] Y . Quan, M. Chen, T. Pang, and H. Ji, “Self2self with dropout: Learning
+self-supervised denoising from single image,” in Proc. IEEE/CVF Conf.
+Comput. Vis. Pattern Recognit., Jun. 2020, pp. 1890–1898.
+[30] C. Ge et al., “Self-supervised Self2Self denoising strategy for OCT
+speckle reduction with a single noisy image,” Biomed. Opt. Exp.,
+vol. 15, no. 2, pp. 1233–1252, 2024.
+[31] M. Geng et al., “Triplet cross-fusion learning for unpaired image
+denoising in optical coherence tomography,” IEEE Trans. Med. Imag.,
+vol. 41, no. 11, pp. 3357–3372, Nov. 2022.
+[32] J. Sohl-Dickstein, E. Weiss, N. Maheswaranathan, and S. Ganguli, “Deep
+unsupervised learning using nonequilibrium thermodynamics,” in Proc.
+Int. Conf. Mach. Learn., 2015, pp. 2256–2265.
+[33] A. Q. Nichol and P. Dhariwal, “Improved denoising diﬀusion probabilis-
+tic models,” in Proc. 38th Int. Conf. Mach. Learn., vol. 139, M. Meila
+and T. Zhang, Eds., Jul. 2021, pp. 8162–8171.
+[34] Y . Song et al., “Score-based generative modeling through stochastic
+diﬀerential equations,” 2020, arXiv:2011.13456.
+[35] J. Ho, A. Jain, and P. Abbeel, “Denoising diﬀusion probabilistic
+models,” in Proc. NIPS, vol. 33, Vancouver, BC, Canada, 2020,
+pp. 6840–6851.
+[36] F.-A. Croitoru, V . Hondru, R. T. Ionescu, and M. Shah, “Diﬀusion
+models in vision: A survey,” IEEE Trans. Pattern Anal. Mach. Intell.,
+vol. 45, no. 9, pp. 10850–10869, Sep. 2023.
+[37] X. Liu et al., “More control for free! Image synthesis with semantic
+diﬀusion guidance,” in Proc. IEEE/CVF Winter Conf. Appl. Comput.
+Vis. (WACV), Jan. 2023, pp. 289–299.
+[38] C. Saharia, J. Ho, W. Chan, T. Salimans, D. J. Fleet, and M. Norouzi,
+“Image super-resolution via iterative reﬁnement,” IEEE Trans. Pattern
+Anal. Mach. Intell., vol. 45, no. 4, pp. 4713–4726, Apr. 2023.
+[39] T. Liu et al., “CriDiﬀ: Criss-cross injection diﬀusion framework via
+generative pre-train for prostate segmentation,” in Proc. Int. Conf. Med.
+Image Comput. Comput. Assist. Intervent, 2024, pp. 102–112.
+[40] G. Daras, A. G. Dimakis, and C. Daskalakis, “Consistent diﬀusion meets
+tweedie: Training exact ambient diﬀusion models with noisy data,” in
+Proc. Int. Conf. Mach. Learn. (ICML), 2024, pp. 10091–10108.
+[41] P. Liu, H. Zhang, K. Zhang, L. Lin, and W. Zuo, “Multi-level wavelet-
+CNN for image restoration,” in Proc. IEEE/CVF Conf. Comput. Vis.
+Pattern Recognit. Workshops (CVPRW), Jun. 2018, pp. 886–88609.
+[42] J. Xin, J. Li, X. Jiang, N. Wang, H. Huang, and X. Gao, “Wavelet-based
+dual recursive network for image super-resolution,” IEEE Trans. Neural
+Netw. Learn. Syst., vol. 33, no. 2, pp. 707–720, Feb. 2022.
+[43] J. Li, B. Cheng, Y . Chen, G. Gao, J. Shi, and T. Zeng, “EWT: Eﬃcient
+wavelet-transformer for single image denoising,” Neural Netw., vol. 177,
+Sep. 2024, Art. no. 106378.
+[44] A. V . D. Oord, Y . Li, and O. Vinyals, “Representation learning with
+contrastive predictive coding,” 2018, arXiv:1807.03748.
+[45] D. Kermany, K. Zhang, and M. Goldbaum, “Labeled optical coherence
+tomography (OCT) and chest X-ray images for classiﬁcation,” Mendeley
+Data, V2, 2018, doi: 10.17632/rscbjbr9sj.2.
+[46] L. Fang, S. Li, Q. Nie, J. A. Izatt, C. A. Toth, and S. Farsiu, “Sparsity
+based denoising of spectral domain optical coherence tomography
+images,” Biomed. Opt. Exp., vol. 3, no. 5, pp. 927–942, 2012.
+[47] L. Fang et al., “Fast acquisition and reconstruction of optical coherence
+tomography images via sparse representation,” IEEE Trans. Med. Imag.,
+vol. 32, no. 11, pp. 2034–2049, Nov. 2013.
+[48] K. Zhang, W. Zuo, Y . Chen, D. Meng, and L. Zhang, “Beyond a
+Gaussian denoiser: Residual learning of deep CNN for image denoising,”
+IEEE Trans. Image Process., vol. 26, no. 7, pp. 3142–3155, Jul. 2017.
+[49] D. Hu, Y . K. Tao, and I. Oguz, “Unsupervised denoising of retinal OCT
+with diﬀusion probabilistic model,” Proc. SPIE, vol. 12032, pp. 25–34,
+Apr. 2022.
+[50] Y . Huang et al., “Simultaneous denoising and super-resolution of optical
+coherence tomography images based on generative adversarial network,”
+Opt. Exp., vol. 27, no. 9, pp. 12289–12307, 2019.
+[51] Y . Xu, G. Wu, Z. Yuan, X. Li, D. Yang, and Y . Liang, “Deep learning
+generalization study on optical coherence tomography image denoising,”
+Phys. Med. Biol., vol. 70, no. 14, Jul. 2025, Art. no. 145006.
+[52] H. G. Li et al., “A new discrete wavelet transform fast algorithm
+with rational dilation factor,” Int. J. Wavelets Multi., vol. 6, no. 4,
+pp. 609–616, 2008.
+Authorized licensed use limited to: China Jiliang University. Downloaded on May 10,2026 at 01:15:48 UTC from IEEE Xplore.  Restrictions apply. 
